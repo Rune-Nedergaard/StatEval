@@ -1,22 +1,58 @@
 #load data
 load('armdata.RData')
 
-library(rgl)
-
-start_cyl <- cylinder3d(cbind(0, 0, seq(0, 10, length = 10)), radius = c(3,3,3), sides = 20, closed = -2)
-target_cyl <- cylinder3d(cbind(60, 0, seq(0, 10, length = 10)), radius = c(3,3,3), sides = 20, closed = -2)
-cyl1 <- cylinder3d(cbind(0, 0, 10 + seq(0, 12.5, length = 10)), radius = c(3,3,3), sides = 20, closed = -2)
-cyl2 <- cylinder3d(cbind(60, 0, 10 + seq(0, 12.5, length = 10)), radius = c(3,3,3), sides = 20, closed = -2)
-cyl3 <- cylinder3d(cbind(30, 0, seq(0, 20, length = 10)), radius = c(3,3,3), sides = 10, closed = -2)
-
-shade3d(addNormals(subdivision3d(start_cyl)), col = 'darkgreen')
-shade3d(addNormals(subdivision3d(target_cyl)), col = 'darkgreen')
-shade3d(addNormals(subdivision3d(cyl1)), col = 'pink')
-shade3d(addNormals(subdivision3d(cyl2)), col = 'pink', alpha = 0.5)
-shade3d(addNormals(subdivision3d(cyl3)), col = 'lightblue')
-
-surface3d(c(-7, 67), c(-20, 20), matrix(0, 2, 2), col = "brown", alpha = 0.9, specular = "black")
-lines3d(armdata[[7]][[1]][[1]])
+data <- as.matrix(armdata)
 
 
-armdata[[7]][[1]][[1]]
+s <- c() # Make a matrix of our path statistics
+e <- 1
+for (experiment in armdata) {
+  p <- 1
+  for (person in experiment) {
+    r <- 1
+    for (repetition in person) {
+      repetition[is.na(repetition)] <- 0 # Remove NAs
+      z.max <- max(repetition[,3])
+      x.argmax <- which.max(repetition[,3])
+      x.max <- repetition[x.argmax, 1]
+      y.range <- abs(max(repetition[,2]) - min(repetition[,2]))
+      y.std <- sd(repetition[,2])
+      z.min <- min(repetition[,3])
+      h <- z.max - z.min
+      
+      s <- rbind(s, c(e, p, r, h, z.max, x.max, y.range, y.std, z.min))
+      r <- r + 1
+    }
+    p <- p + 1
+  }
+  e <- e + 1
+}
+
+
+# Make a nice data frame
+s <- data.frame(s)
+colnames(s) <- c("Exp", "Per", "Rep", "height", "z_max", "x", "y_range", "y_std", "z_min")
+s$Exp <- as.factor(s$Exp)
+s$Per <- as.factor(s$Per)
+s$Rep <- as.factor(s$Rep)
+
+boxplot(s$height ~ s$Exp)
+
+hist(s$x, breaks=40)
+
+
+l <- lm(s$height ~ s$Exp)
+anova(l)
+
+par(mfrow=c(2, 2))
+boxplot(s$height ~ s$Exp)
+boxplot(s$height ~ s$Per)
+boxplot(s$x ~ s$Exp)
+boxplot(s$x ~ s$Per)
+
+par(mfrow=c(1,1))
+interaction.plot(s$Exp, s$Per, s$height)
+
+# P-adjust using method
+p.adjust(c(2.2e-16,2.2e-16), method = 'hochberg')
+
