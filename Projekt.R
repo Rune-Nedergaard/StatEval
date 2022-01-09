@@ -2,6 +2,14 @@
 armdata <- readRDS("armdata_cleaned.rds")
 
 
+# Create jpg file path for plots by providing a plot name
+getJpgFilePath <- function(plot_name) {
+  plots_path <- "plots"
+  file_type <- "jpg"
+  path <- paste(paste(plots_path, plot_name, sep="/"), file_type, sep=".")
+  
+}
+
 # =======================================================
 # 
 # =======================================================
@@ -95,11 +103,14 @@ s$Repetition <- as.factor(s$Repetition)
 s$obstacleHeight <- as.factor(s$obstacleHeight)
 s$d <- as.factor(s$d)
 
+
+jpeg(file= getJpgFilePath("boxplot_pathHeight_obstacleHeight"))
 boxplot(paths$pathHeight ~ paths$obstacleHeight, ylab="path height", xlab="Obstacle height")
+dev.off()
 
+jpeg(file= getJpgFilePath("boxplot_xVertex_d"))
 boxplot(paths$xVertex ~ paths$d, ylab="x vertex", xlab="d")
-
-boxplot(paths$xVertex ~ paths$Person, ylab="x vertex", xlab="Person")
+dev.off()
 
 
 L <- lm(obstacleHeight ~ pathHeight, data = paths)
