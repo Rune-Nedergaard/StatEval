@@ -22,6 +22,9 @@ n_repetitions <- length(armdata[[1]][[1]]);n_repetitions
 # dimensions of data matrix 
 dim_matrix <- dim(armdata[[1]][[1]][[1]]); dim_matrix
 
+# Calculate total number of repetitions 
+print(sprintf("Total number of repitions: %d", n_repetitions*n_participants*n_experiments))
+
 
 # ----- Loop through data to find NaN values
 
@@ -63,9 +66,11 @@ for (i in 1:n_experiments){
   }
 }
 
+# Total number of rows with NaN values 
+print(sprintf("Total number of rows with NaN: %d",sum(total_nan_rows)))
+
 
 # ----- Replace NaN values
-
 nan_locations
 
 # What to replace NaN values with
