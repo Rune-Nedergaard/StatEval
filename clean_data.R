@@ -85,7 +85,7 @@ for(i in 1:length(nan_locations)){
 }
 
 # Save new data to file 
-saveRDS(armdata, file="armdata_new.rds")
+saveRDS(armdata, file="armdata_cleaned.rds")
 
 # Load data from file
-armdata <- readRDS("armdata_new.rds")
+armdata <- readRDS("armdata_cleaned.rds")
