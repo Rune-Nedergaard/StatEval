@@ -106,9 +106,9 @@ require(nnet)
 # Setting the baseline 
 train$Per <- relevel(train$Per, ref = "1")
 
-multinom.fit <- multinom(Per ~ height, data=train)
+#multinom.fit <- multinom(Per ~ height, data=train)
 
-#multinom.fit <- multinom(Per ~ ., data=train)
+multinom.fit <- multinom(Exp ~ ., data=train)
 
 
 summary(multinom.fit)
