@@ -297,3 +297,69 @@ pairwise.wilcox.test(paths$pathDist, paths$Person,
 # # Check for interaction
 # L <- lm(obstacleHeight ~ pathHeight * xVertex, data = paths)
 # anova(L)
+
+###########################################################
+#                       MODELLING                         #
+###########################################################
+
+smp_size <- floor(0.75 * nrow(paths))
+set.seed(666)
+
+
+train_idx <- sample(seq_len(nrow(paths)), size = smp_size)
+
+train <- paths[train_idx, ]
+test <- paths[-train_idx, ]
+
+#####################################
+
+###### Multinomial logistic regression ##########
+
+#https://datasciencebeginners.com/2018/12/20/multinomial-logistic-regression-using-r/ 
+
+require(nnet)
+library(MASS)
+
+# Setting the baseline 
+train$Experiment <- relevel(train$Experiment, ref = 1)
+test$Experiment <- relevel(test$Experiment, ref = 1)
+
+#multinom.fit <- multinom(Per ~ height, data=train)
+
+# TRAIN MODEL
+multinom.fit <- multinom(Experiment ~ pathDist+ xVertex+ pathHeight+ zVertex+ 
+                           zMin+ yRange+ yStd+ precticed + Repetition+ Person
+                           , data=train)
+
+# Simpler model according to stepAIC
+# multinom.fit <- multinom(formula = Experiment ~ pathDist + xVertex + pathHeight + 
+#           zVertex + zMin + yStd + Person, data = train)
+
+# Vi skal have lavet en der har d og obstacleHeight som response variabel
+# 
+
+stepAIC(multinom.fit, direction = "both")
+
+summary(multinom.fit)
+
+############# Train-set ############# 
+
+# Predicting the values for train dataset
+train$precticed <- predict(multinom.fit, newdata = train, "class")
+
+# Building classification table
+ctable_train <- table(train$Experiment, train$precticed)
+
+# Calculating accuracy - sum of diagonal elements divided by total obs
+train_test_error <- round((sum(diag(ctable_train))/sum(ctable_train))*100,2);train_test_error
+
+############# Test-set ############# 
+
+# Predicting the values for train dataset
+test$precticed <- predict(multinom.fit, newdata = test, "class")
+
+# Building classification table
+ctable_test <- table(test$Experiment, test$precticed)
+
+# Calculating accuracy - sum of diagonal elements divided by total obs
+test_error <- round((sum(diag(ctable_test))/sum(ctable_test))*100,2);test_error
