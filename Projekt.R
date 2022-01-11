@@ -301,15 +301,22 @@ pairwise.wilcox.test(paths$pathDist, paths$Person,
 ###########################################################
 #                       MODELLING                         #
 ###########################################################
+require(nnet)
+library(modelr)
+library(purrr)
+library(dplyr)
 
-smp_size <- floor(0.75 * nrow(paths))
-set.seed(666)
+
+cv <- crossv_kfold(paths, k = 5)
+
+#smp_size <- floor(0.75 * nrow(paths))
+#set.seed(666)
 
 
-train_idx <- sample(seq_len(nrow(paths)), size = smp_size)
+#train_idx <- sample(seq_len(nrow(paths)), size = smp_size)
 
-train <- paths[train_idx, ]
-test <- paths[-train_idx, ]
+#train <- paths[train_idx, ]
+#test <- paths[-train_idx, ]
 
 #####################################
 
@@ -317,12 +324,10 @@ test <- paths[-train_idx, ]
 
 #https://datasciencebeginners.com/2018/12/20/multinomial-logistic-regression-using-r/ 
 
-require(nnet)
-library(MASS)
-
 # Setting the baseline 
-train$Experiment <- relevel(train$Experiment, ref = 1)
-test$Experiment <- relevel(test$Experiment, ref = 1)
+
+train$Experiment <- map(cv$train, ~relevel(train$Experiment, ref = 1))
+test$Experiment <- map(cv$test, ~relevel(test$Experiment, ref = 1))
 
 #multinom.fit <- multinom(Per ~ height, data=train)
 
@@ -334,12 +339,31 @@ test$Experiment <- relevel(test$Experiment, ref = 1)
 multinom.fit <- multinom(Experiment ~ pathDist+ xVertex+ pathHeight+ zVertex+ 
                         zMin+ yRange+ yStd + Repetition + Person, data = train_data)
 
-# Vi skal have lavet en der har d og obstacleHeight som response variabel
-# 
+# CROSSVALIDATE
+multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ pathDist+ xVertex+ pathHeight+ zVertex+ 
+                                             zMin+ yRange+ yStd + Repetition + Person, data = .))
 
-stepAIC(multinom.fit, direction = "both")
 
-summary(multinom.fit)
+get_pred  <- function(model, test_data){
+  data  <- as.data.frame(test_data)
+  pred  <- add_predictions(data, model)
+  return(pred)
+}
+
+pred  <- map2_df(multinom.fit.cv, cv$test, get_pred, .id = "Run")
+
+head(pred)
+
+ERR  <- pred %>% group_by(Run) %>%
+  summarise(Acc = round((sum(diag(table(Experiment, pred)))/sum(table(Experiment, pred)))*100,2))
+
+ERR
+
+
+
+#stepAIC(multinom.fit, direction = "both")
+
+#summary(multinom.fit)
 
 ############# Train-set ############# 
 
