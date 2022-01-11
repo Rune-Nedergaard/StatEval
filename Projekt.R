@@ -1,5 +1,6 @@
-# Load cleaned data 
-armdata <- readRDS("armdata_cleaned.rds")
+# =======================================================
+#  Define functions
+# =======================================================
 
 # Create jpg file path for plots by providing a plot name
 getJpgFilePath <- function(plot_name) {
@@ -15,8 +16,11 @@ getDist3d <- function(v1, v2) {
 }
 
 # =======================================================
-# 
+# Load/prepare data
 # =======================================================
+
+# Load cleaned data 
+armdata <- readRDS("armdata_cleaned.rds")
 
 # Define experiment setups 
 exp_setups <- data.frame(exp1 = c(15.0, 20),
@@ -118,42 +122,118 @@ paths$Person <- as.factor(paths$Person)
 paths$Repetition <- as.factor(paths$Repetition)
 
 
+
+# =======================================================
+# Explore data
+# =======================================================
+
+# ---------------------
+# Boxplot
+# ---------------------
+
+# Boxplot: pathsHeigh ~ ObstacleHeight
 jpeg(file= getJpgFilePath("boxplot_pathHeight_obstacleHeight"))
-boxplot(paths$pathHeight ~ paths$obstacleHeight, ylab="path height", xlab="Obstacle height")
+boxplot(paths$pathHeight ~ paths$obstacleHeight, ylab="Path height", xlab="Obstacle height")
 dev.off()
 
+# Boxplot: xVertex ~ d
 jpeg(file= getJpgFilePath("boxplot_xVertex_d"))
 boxplot(paths$xVertex ~ paths$d, ylab="x vertex", xlab="d")
 dev.off()
 
+# Boxplot: pathHeight ~ Person
 jpeg(file= getJpgFilePath("boxplot_pathHeight_person"))
-boxplot(paths$pathHeight ~ paths$Person, ylab="path distance", xlab="Person")
+boxplot(paths$pathHeight ~ paths$Person, ylab="Path distance", xlab="Person")
 dev.off()
 
+# Boxplot: pathDist ~ Person
 jpeg(file= getJpgFilePath("boxplot_pathDist_person"))
-boxplot(paths$pathDist ~ paths$Person, ylab="path distance", xlab="Person")
+boxplot(paths$pathDist ~ paths$Person, ylab="Path distance", xlab="Person")
 dev.off()
 
-# L <- lm(pathHeight ~ . , data = paths)
-# anova(L)
 
-# interaction.plot(paths$Experiment, paths$Person, paths$pathHeight)
-# 
-# anv <- aov(pathHeight ~ Person + Experiment, data = paths)
-# plot(anv)
-# 
-# # L <- lm(paths$pathHeight ~ paths$Person , data = paths)
-# anova(L)
+# ---------------------
+# Effect of person
+# ---------------------
+jpeg(file= getJpgFilePath("interaction_experiment_person_pathDist"), width = 850, height = 850)
+interaction.plot(paths$Experiment, paths$Person, paths$pathDist, xlab="Experiment", ylab="Path distance")
+dev.off()
 
-# 
-# L <- lm(paths$xVertex ~ paths$Person , data = paths)
-# anova(L)
-# 
-# 
-# plot(L)
-# 
-# summary(L)
-# 
+anv <- aov(log(pathDist) ~ Person + Experiment, data = paths)
+plot(anv)
+summary(anv)
+
+
+
+# =======================================================
+# Model
+# =======================================================
+
+
+anv <- aov(log(pathDist) ~ Person + Experiment + Person:Experiment, data = paths)
+plot(anv)
+summary(anv)
+
+res.aov <- aov(pathHeight ~ Person + Experiment, data = paths)
+plot(anv)
+summary(res.aov)
+
+
+
+anv <- lm(log(pathDist) ~ Person + Experiment + Person:Experiment, data = paths)
+plot(anv)
+summary(anv)
+
+
+par(mfrow=c(1,2))
+
+hist(log(paths$pathDist))
+hist(paths$pathDist)
+
+
+
+L <- lm(pathDist ~ Person * Experiment, data = paths)
+anova(L)
+
+
+
+
+L <- lm(pathHeight ~ . , data = paths)
+anova(L)
+
+
+hist(paths$pathDist)
+
+
+interaction.plot(paths$Experiment, paths$Person, paths$pathHeight)
+
+anv <- aov(pathDist ~ Person + Experiment, data = paths)
+plot(anv)
+
+qqplot(anv)
+
+
+# L <- lm(paths$pathHeight ~ paths$Person , data = paths)
+anova(L)
+
+
+
+
+
+
+L <- lm(paths$xVertex ~ paths$Person , data = paths)
+anova(L)
+
+
+plot(L)
+
+summary(L)
+
+pairwise.wilcox.test(paths$pathDist, paths$Person,
+                     p.adjust.method = "BH")
+
+
+
 # 
 # 
 # s <- paths[paths$Experiment == 2,]
