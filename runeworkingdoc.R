@@ -42,8 +42,11 @@ boxplot(s$height ~ s$Exp)
 hist(s$x, breaks=40)
 
 
-l <- lm(s$height ~ s$Exp)
+l <- lm(s$height ~ s$Per*z_max*x*y_range)
 anova(l)
+
+
+drop1(l, test = "F")
 
 par(mfrow=c(2, 2))
 boxplot(s$height ~ s$Exp)
