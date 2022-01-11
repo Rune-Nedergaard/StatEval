@@ -22,6 +22,8 @@ getDist3d <- function(v1, v2) {
 # Load cleaned data 
 armdata <- readRDS("armdata_cleaned.rds")
 
+armdata[[1]][[1]]
+
 # Define experiment setups 
 exp_setups <- data.frame(exp1 = c(15.0, 20),
                          exp2 = c(15.0, 27.5),
@@ -305,8 +307,10 @@ require(nnet)
 library(modelr)
 library(purrr)
 library(dplyr)
+library(ggplot2)
+library(yardstick)
 
-folds <- 15
+folds <- 30
 
 cv <- crossv_kfold(paths, k = folds)
 
@@ -358,11 +362,38 @@ Acc  <- pred %>% group_by(Fold) %>%
   summarise(Acc = round((sum(diag(table(Experiment, pred)))/sum(table(Experiment, pred)))*100,2))
   # Acc2 = round((sum(diag(table(Experiment, pred2)))/sum(table(Experiment, pred2)))*100,2)
 
-mean(pull(Acc, Acc))
-sd(pull(Acc, Acc))
+# CM <- confusionMatrix(pred$pred, pred$Experiment, dnn = c("Prediction", "Reference"))
+
+truth_predicted <- data.frame(
+  obs = pred$Experiment,
+  pred = pred$pred)
+
+truth_predicted$obs <- as.factor(truth_predicted$obs)
+truth_predicted$pred <- as.factor(truth_predicted$pred)
+
+cm <- conf_mat(truth_predicted, obs, pred)
+
+autoplot(cm, type = "heatmap") +
+  scale_fill_gradient(low = "white", high = "orange")
+
 quantile(pull(Acc, Acc), probs = c(0.025, 0.975))
 
+# Plot histogram with bell curve 
+histWithNorm <- function(x, breaks = 10, main = "Histogram"){
+  h <- hist(x, breaks = breaks, main = main, col = 2)
+  xfit <- seq(min(x), max(x), length = 40) 
+  yfit <- dnorm(xfit, mean = mean(x), sd = sd(x)) 
+  yfit <- yfit * diff(h$mids[1:2]) * length(x) 
+  lines(xfit, yfit, col = "black", lwd = 2)
+}
+
+histWithNorm(pull(Acc, Acc))
+qqnorm(pull(Acc, Acc))
+qqline(pull(Acc, Acc))
+
 # Ved flere modeller kan vi sammenligne med en t-test eller McNemar
+# Her antager vi at Generalisation error for modellerne er normafordelte.
+# Vi kan tjekke dette ved Histogram og qqplot, som gjort ovenfor.
 
 
 ##################
