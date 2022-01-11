@@ -67,6 +67,12 @@ p.adjust(c(2.2e-16,2.2e-16), method = 'hochberg')
 library(ggplot2)
 library(cowplot)
 
+
+p <- ggplot(ToothGrowth, aes(x=dose, y=len)) + 
+  geom_boxplot()
+
+
+
 head(s)
 
 str(s)
@@ -100,10 +106,9 @@ require(nnet)
 # Setting the baseline 
 train$Per <- relevel(train$Per, ref = "1")
 
-#multinom.fit <- multinom(Per ~ height, data=train)
+multinom.fit <- multinom(Per ~ height, data=train)
 
-multinom.fit <- multinom(Per ~ ., data=train)
-
+#multinom.fit <- multinom(Per ~ ., data=train)
 
 
 summary(multinom.fit)
@@ -120,5 +125,10 @@ ctable <- table(train$Per, train$precticed)
 round((sum(diag(ctable))/sum(ctable))*100,2)
 
 
+
+ggplot(data=s, aes(x=Per, y=height)) +
+  geom_point(aes(color=Per), size=2) +
+  xlab("Person") +
+  ylab("Height")
 
 
