@@ -306,8 +306,9 @@ library(modelr)
 library(purrr)
 library(dplyr)
 
+folds <- 15
 
-cv <- crossv_kfold(paths, k = 5)
+cv <- crossv_kfold(paths, k = folds)
 
 #smp_size <- floor(0.75 * nrow(paths))
 #set.seed(666)
@@ -315,8 +316,8 @@ cv <- crossv_kfold(paths, k = 5)
 
 #train_idx <- sample(seq_len(nrow(paths)), size = smp_size)
 
-#train <- paths[train_idx, ]
-#test <- paths[-train_idx, ]
+#train_data <- paths[train_idx, ]
+#test_data <- paths[-train_idx, ]
 
 #####################################
 
@@ -324,25 +325,25 @@ cv <- crossv_kfold(paths, k = 5)
 
 #https://datasciencebeginners.com/2018/12/20/multinomial-logistic-regression-using-r/ 
 
-# Setting the baseline 
-
+# Sorting 
 train$Experiment <- map(cv$train, ~relevel(train$Experiment, ref = 1))
 test$Experiment <- map(cv$test, ~relevel(test$Experiment, ref = 1))
-
-#multinom.fit <- multinom(Per ~ height, data=train)
 
 # TRAIN MODEL
 #multinom.fit <- multinom(Experiment ~ pathDist+ xVertex+ pathHeight+ zVertex+ 
 #                           zMin+ yRange+ yStd + Repetition + Person, data=train)
 
 # Simpler model according to stepAIC
-multinom.fit <- multinom(Experiment ~ pathDist+ xVertex+ pathHeight+ zVertex+ 
-                        zMin+ yRange+ yStd + Repetition + Person, data = train_data)
+#multinom.fit <- multinom(Experiment ~ pathDist+ xVertex+ pathHeight+ zVertex+ 
+#                        zMin+ yRange+ yStd + Repetition + Person, data = train)
 
-# CROSSVALIDATE
+###### Cross-Validation ##########
+
+# Vi kan nemt lave flere modeller ved blot: 
+#multinom.fit.cv2 <- map(cv$train, ~multinom(Experiment ~ DATA, data = .))
+
 multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ pathDist+ xVertex+ pathHeight+ zVertex+ 
                                              zMin+ yRange+ yStd + Repetition + Person, data = .))
-
 
 get_pred  <- function(model, test_data){
   data  <- as.data.frame(test_data)
@@ -350,16 +351,21 @@ get_pred  <- function(model, test_data){
   return(pred)
 }
 
-pred  <- map2_df(multinom.fit.cv, cv$test, get_pred, .id = "Run")
+pred  <- map2_df(multinom.fit.cv, cv$test, get_pred, .id = "Fold")
+#pred2 <- map2_df(multinom.fit.cv2, cv$test, get_pred, .id = "Fold")
 
-head(pred)
-
-ERR  <- pred %>% group_by(Run) %>%
+Acc  <- pred %>% group_by(Fold) %>%
   summarise(Acc = round((sum(diag(table(Experiment, pred)))/sum(table(Experiment, pred)))*100,2))
+  # Acc2 = round((sum(diag(table(Experiment, pred2)))/sum(table(Experiment, pred2)))*100,2)
 
-ERR
+mean(pull(Acc, Acc))
+sd(pull(Acc, Acc))
+quantile(pull(Acc, Acc), probs = c(0.025, 0.975))
+
+# Ved flere modeller kan vi sammenligne med en t-test eller McNemar
 
 
+##################
 
 #stepAIC(multinom.fit, direction = "both")
 
