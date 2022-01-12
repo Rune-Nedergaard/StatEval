@@ -342,14 +342,25 @@ folds <- 30
 
 cv <- crossv_kfold(paths, k = folds)
 
+
+################## STEP AIC ###################
+#These are needed when not doing cv - when we do stepAIC
 smp_size <- floor(0.75 * nrow(paths))
 set.seed(666)
-
-
 train_idx <- sample(seq_len(nrow(paths)), size = smp_size)
-
 train_data <- paths[train_idx, ]
 test_data <- paths[-train_idx, ]
+
+
+#For doing stepAIC
+multinom.fit <- multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
+                         + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
+                           yStd +xStd +zStd + zMin + pathDist, data = paths)
+
+
+stepAIC(multinom.fit, direction = "both")
+
+#summary(multinom.fit)
 
 #####################################
 
@@ -373,11 +384,6 @@ multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ Person + pathHeight + zV
            xzVertex + yShakinessMean + xStd + zStd + zMin, data = .))
 
 
-
-#For doing stepAIC
-multinom.fit <- multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
-                                           + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
-                                             yStd +xStd +zStd + zMin + pathDist, data = paths)
 
 
 
@@ -430,12 +436,6 @@ qqline(pull(Acc, Acc))
 # Her antager vi at Generalisation error for modellerne er normafordelte.
 # Vi kan tjekke dette ved Histogram og qqplot, som gjort ovenfor.
 
-
-##################
-
-stepAIC(multinom.fit, direction = "both")
-
-#summary(multinom.fit)
 
 ############# Train-set ############# 
 
