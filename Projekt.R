@@ -151,6 +151,22 @@ paths$d <- as.factor(paths$d)
 paths$obstacleHeight <- as.factor(paths$obstacleHeight)
 
 
+par(mfrow=c(1,1))
+
+plot(paths$Experiment,paths$yShakinessMean, main= "yShakinessMean")
+plot(paths$Experiment,paths$yShakinessStd, main= "yShakinessStd")
+
+plot(paths$Experiment,paths$zMin, main= "Zmin")
+plot(paths$Experiment,paths$zStd, main= "zStd")
+
+plot(paths$Experiment,paths$pathDist, main= "pathDist")
+
+plot(paths$Experiment,paths$xyMax, main= "xyMax")
+plot(paths$Experiment,paths$yRange, main= "yRange")
+
+plot(paths$Experiment,paths$xzVertex, main= "xzVertex")
+plot(paths$Experiment,paths$zStd, main= "zStd")
+
 
 # =======================================================
 # Explore data
@@ -435,6 +451,17 @@ qqline(pull(Acc, Acc))
 # Ved flere modeller kan vi sammenligne med en t-test eller McNemar
 # Her antager vi at Generalisation error for modellerne er normafordelte.
 # Vi kan tjekke dette ved Histogram og qqplot, som gjort ovenfor.
+
+############ McNemar ###############  
+#We need a contingency table. Assumption: each cell has at least 25 observatinos
+# statistic = (Yes/No - No/Yes)^2 / (Yes/No + No/Yes)
+
+#It is not commenting on whether one model is more or less accurate or error prone than another. 
+#This is clear when we look at how the statistic is calculated.
+
+#It may be useful to report the difference in error between the two classifiers on the test set. 
+#In this case, be careful with your claims as the significant test does not report on the difference in error between the models, 
+#only the relative difference in the proportion of error between the models.
 
 
 ############# Train-set ############# 
