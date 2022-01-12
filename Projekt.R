@@ -433,11 +433,11 @@ cm <- conf_mat(truth_predicted, obs, pred)
 autoplot(cm, type = "heatmap") +
   scale_fill_gradient(low = "white", high = "orange")
 
-quantile(pull(Acc, Acc), probs = c(0.025, 0.975))
+CI <- quantile(pull(Acc, Acc), probs = c(0.025, 0.975));CI
 
 # Plot histogram with bell curve 
-histWithNorm <- function(x, breaks = 10, main = "Histogram"){
-  h <- hist(x, breaks = breaks, main = main, col = 2)
+histWithNorm <- function(x, breaks = 10, main = "Generalisation Error"){
+  h <- hist(x, breaks = breaks, main = main, col = 0)
   xfit <- seq(min(x), max(x), length = 40) 
   yfit <- dnorm(xfit, mean = mean(x), sd = sd(x)) 
   yfit <- yfit * diff(h$mids[1:2]) * length(x) 
@@ -445,6 +445,7 @@ histWithNorm <- function(x, breaks = 10, main = "Histogram"){
 }
 
 histWithNorm(pull(Acc, Acc))
+abline(v = c(CI[1],CI[2]), col = 1, lwd =2)
 qqnorm(pull(Acc, Acc))
 qqline(pull(Acc, Acc))
 
