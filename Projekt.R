@@ -464,62 +464,51 @@ qqline(pull(Acc, Acc))
 #only the relative difference in the proportion of error between the models.
 
 
-############# Train-set ############# 
+
+############# Initial test combined vs. separate ############# 
+########## Combined ################
+multinom.fit <- multinom(formula = Experiment ~ pathDist + xzVertex + pathHeight + 
+                           zVertex + zMin + yStd + Person, data = train_data)
+
+
 
 # Predicting the values for train dataset
-train$precticed <- predict(multinom.fit, newdata = train, "class")
+test_data$precticed <- predict(multinom.fit, newdata = test_data, "class")
 
 # Building classification table
-ctable_train <- table(train$Experiment, train$precticed)
-
-# Calculating accuracy - sum of diagonal elements divided by total obs
-train_test_error <- round((sum(diag(ctable_train))/sum(ctable_train))*100,2);train_test_error
-
-############# Test-set ############# 
-
-# Predicting the values for train dataset
-test$precticed <- predict(multinom.fit, newdata = test, "class")
-
-# Building classification table
-ctable_test <- table(test$Experiment, test$precticed)
+ctable_test <- table(test_data$Experiment, test_data$precticed)
 
 # Calculating accuracy - sum of diagonal elements divided by total obs
 test_error <- round((sum(diag(ctable_test))/sum(ctable_test))*100,2);test_error
 
-print(c(train_test_error, test_error))
 
 
 ############ Predicting distance and height separately ############
 
 #Obstacle height
-multinom.fit <- multinom(formula = obstacleHeight ~ pathDist + xVertex + pathHeight + 
-                           zVertex + zMin + yStd + Person, data = train)
+multinom.fit <- multinom(formula = obstacleHeight ~ pathDist + xzVertex + pathHeight + 
+                           zVertex + zMin + yStd + Person, data = train_data)
 
 # Doing all the things for height
-train$precticed <- predict(multinom.fit, newdata = train, "class")
-ctable_train <- table(train$obstacleHeight, train$precticed)
-train_test_error <- round((sum(diag(ctable_train))/sum(ctable_train))*100,2);train_test_error
-test$precticed <- predict(multinom.fit, newdata = test, "class")
-ctable_test <- table(test$obstacleHeight, test$precticed)
+
+test_data$precticed <- predict(multinom.fit, newdata = test_data, "class")
+ctable_test <- table(test_data$obstacleHeight, test_data$precticed)
 test_error <- round((sum(diag(ctable_test))/sum(ctable_test))*100,2);test_error
 
 #Finding indices of correctly classified
-correct_obstacleHeight <- test$obstacleHeight == test$precticed
+correct_obstacleHeight <- test_data$obstacleHeight == test_data$precticed
 
 
 #Object distance
-multinom.fit <- multinom(formula = d ~ pathDist + xVertex + pathHeight + 
-                           zVertex + zMin + yStd + Person, data = train)
+multinom.fit <- multinom(formula = d ~ pathDist + xzVertex + pathHeight + 
+                           zVertex + zMin + yStd + Person, data = train_data)
 
 # Doing all the things for distance
-train$precticed <- predict(multinom.fit, newdata = train, "class")
-ctable_train <- table(train$d, train$precticed)
-train_test_error <- round((sum(diag(ctable_train))/sum(ctable_train))*100,2);train_test_error
-test$precticed <- predict(multinom.fit, newdata = test, "class")
-ctable_test <- table(test$d, test$precticed)
+test_data$precticed <- predict(multinom.fit, newdata = test_data, "class")
+ctable_test <- table(test_data$d, test_data$precticed)
 test_error <- round((sum(diag(ctable_test))/sum(ctable_test))*100,2);test_error
 
-correct_d<- test$d == test$precticed
+correct_d<- test_data$d == test_data$precticed
 
 #See where both are correct
 both_correct <- (correct_d == correct_obstacleHeight & correct_d == TRUE)
