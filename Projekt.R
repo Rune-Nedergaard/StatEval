@@ -342,14 +342,14 @@ folds <- 30
 
 cv <- crossv_kfold(paths, k = folds)
 
-#smp_size <- floor(0.75 * nrow(paths))
-#set.seed(666)
+smp_size <- floor(0.75 * nrow(paths))
+set.seed(666)
 
 
-#train_idx <- sample(seq_len(nrow(paths)), size = smp_size)
+train_idx <- sample(seq_len(nrow(paths)), size = smp_size)
 
-#train_data <- paths[train_idx, ]
-#test_data <- paths[-train_idx, ]
+train_data <- paths[train_idx, ]
+test_data <- paths[-train_idx, ]
 
 #####################################
 
@@ -358,8 +358,8 @@ cv <- crossv_kfold(paths, k = folds)
 #https://datasciencebeginners.com/2018/12/20/multinomial-logistic-regression-using-r/ 
 
 # Sorting 
-# train$Experiment <- map(cv$train, ~relevel(train$Experiment, ref = 1))
-# test$Experiment <- map(cv$test, ~relevel(test$Experiment, ref = 1))
+#train$Experiment <- map(cv$train, ~relevel(train$Experiment, ref = 1))
+#test$Experiment <- map(cv$test, ~relevel(test$Experiment, ref = 1))
 
 ###### Cross-Validation ##########
 
@@ -367,6 +367,17 @@ cv <- crossv_kfold(paths, k = folds)
 multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
                                            + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
                                              yStd +xStd +zStd + zMin + pathDist, data = .))
+
+
+multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ Person + pathHeight + zVertex + 
+           xzVertex + yShakinessMean + xStd + zStd + zMin, data = .))
+
+
+
+#For doing stepAIC
+multinom.fit <- multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
+                                           + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
+                                             yStd +xStd +zStd + zMin + pathDist, data = paths)
 
 
 
@@ -422,7 +433,7 @@ qqline(pull(Acc, Acc))
 
 ##################
 
-stepAIC(multinom.fit.cv, direction = "both")
+stepAIC(multinom.fit, direction = "both")
 
 #summary(multinom.fit)
 
