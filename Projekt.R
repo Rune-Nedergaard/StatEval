@@ -73,13 +73,38 @@ for (i in 1:n_experiments){
       z <- repetition[,3]
       
       # Get x-value of highest point on path (vertex of path)
-      x_vertex <- repetition[which.max(z), 1]
+      xz_vertex <- repetition[which.max(z), 1]
       # Get z-value of highest point on path (vertex of path)
       z_vertex <- repetition[which.max(z), 3]
+      # Get x-value where y is max
+      xy_max <- repetition[which.max(y),1]
+      # Get x-value where y is min
+      xy_min <- repetition[which.min(y),1]
+      # See how inefficient people move in y-axis
+      nulls <- rep(0,length(y))
+      #y_shakiness <- abs(nulls-y)
+      y_shakiness_mean <- mean(abs(nulls-y))
+      y_shakiness_std <- sd(abs(nulls-y))
+      
+      yz_max <- repetition[which.max(z),2]
+      
+      
+      # par(mfrow = c(1,2))
+      # plot(x,y_shakiness)
+      # abline(v = xz_vertex)
+      # plot(x,z)
+      # abline(v = xz_vertex)
+      # 
       # Calculate y-value range
       y_range <- abs(max(y) - min(y))
       # y standard deviation
       y_std <- sd(y)
+      
+      #x standard deviation
+      x_std <- sd(x)
+      
+      #z staandard deviation
+      z_std <- sd(z)
       
       z_min <- min(repetition[,3])
       
@@ -105,7 +130,7 @@ for (i in 1:n_experiments){
       }
       
       
-      paths <- rbind(paths, c(i, d, obstacle_height, j, k, path_height, z_vertex, x_vertex, y_range, y_std, z_min, curve_dist))
+      paths <- rbind(paths, c(i, d, obstacle_height, j, k, path_height, z_vertex, xz_vertex, xy_max, xy_min, y_shakiness_mean, y_shakiness_std, yz_max, y_range, y_std, x_std, z_std, z_min, curve_dist))
 
     }
   }
@@ -115,13 +140,15 @@ for (i in 1:n_experiments){
 paths <- data.frame(paths)
 
 # Add column names
-colnames(paths) <- c("Experiment", "d" , "obstacleHeight", "Person", "Repetition", "pathHeight", "zVertex", "xVertex", "yRange", "yStd", "zMin", "pathDist")
+colnames(paths) <- c("Experiment", "d" , "obstacleHeight", "Person", "Repetition", "pathHeight", "zVertex", "xzVertex","xyMax","xyMin","yShakinessMean","yShakinessStd","yzMax", "yRange", "yStd","xStd","zStd", "zMin", "pathDist")
 head(paths)
 
 # Define variables as factors
 paths$Experiment <- as.factor(paths$Experiment)
 paths$Person <- as.factor(paths$Person)
 paths$Repetition <- as.factor(paths$Repetition)
+paths$d <- as.factor(paths$d)
+paths$obstacleHeight <- as.factor(paths$obstacleHeight)
 
 
 
@@ -309,6 +336,7 @@ library(purrr)
 library(dplyr)
 library(ggplot2)
 library(yardstick)
+library(MASS)
 
 folds <- 30
 
@@ -330,24 +358,20 @@ cv <- crossv_kfold(paths, k = folds)
 #https://datasciencebeginners.com/2018/12/20/multinomial-logistic-regression-using-r/ 
 
 # Sorting 
-train$Experiment <- map(cv$train, ~relevel(train$Experiment, ref = 1))
-test$Experiment <- map(cv$test, ~relevel(test$Experiment, ref = 1))
-
-# TRAIN MODEL
-#multinom.fit <- multinom(Experiment ~ pathDist+ xVertex+ pathHeight+ zVertex+ 
-#                           zMin+ yRange+ yStd + Repetition + Person, data=train)
-
-# Simpler model according to stepAIC
-#multinom.fit <- multinom(Experiment ~ pathDist+ xVertex+ pathHeight+ zVertex+ 
-#                        zMin+ yRange+ yStd + Repetition + Person, data = train)
+# train$Experiment <- map(cv$train, ~relevel(train$Experiment, ref = 1))
+# test$Experiment <- map(cv$test, ~relevel(test$Experiment, ref = 1))
 
 ###### Cross-Validation ##########
 
 # Vi kan nemt lave flere modeller ved blot: 
-#multinom.fit.cv2 <- map(cv$train, ~multinom(Experiment ~ DATA, data = .))
+multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
+                                           + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
+                                             yStd +xStd +zStd + zMin + pathDist, data = .))
 
-multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ pathDist+ xVertex+ pathHeight+ zVertex+ 
-                                             zMin+ yRange+ yStd + Repetition + Person, data = .))
+
+
+#multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ pathDist+ xzVertex+ pathHeight+ zVertex+ 
+#                                             zMin+ yRange+ yStd + Repetition + Person, data = .))
 
 get_pred  <- function(model, test_data){
   data  <- as.data.frame(test_data)
@@ -398,7 +422,7 @@ qqline(pull(Acc, Acc))
 
 ##################
 
-#stepAIC(multinom.fit, direction = "both")
+stepAIC(multinom.fit.cv, direction = "both")
 
 #summary(multinom.fit)
 
