@@ -355,8 +355,7 @@ library(yardstick)
 library(MASS)
 
 folds <- 30
-
-cv <- crossv_kfold(paths, k = folds)
+cv <- crossv_kfold(paths, k = folds);cv
 
 
 ################## STEP AIC ###################
@@ -389,22 +388,10 @@ stepAIC(multinom.fit, direction = "both")
 #test$Experiment <- map(cv$test, ~relevel(test$Experiment, ref = 1))
 
 ###### Cross-Validation ##########
-
-# Vi kan nemt lave flere modeller ved blot: 
 multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
                                            + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
                                              yStd +xStd +zStd + zMin + pathDist, data = .))
 
-
-multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ Person + pathHeight + zVertex + 
-           xzVertex + yShakinessMean + xStd + zStd + zMin, data = .))
-
-
-
-
-
-#multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ pathDist+ xzVertex+ pathHeight+ zVertex+ 
-#                                             zMin+ yRange+ yStd + Repetition + Person, data = .))
 
 get_pred  <- function(model, test_data){
   data  <- as.data.frame(test_data)
@@ -412,15 +399,25 @@ get_pred  <- function(model, test_data){
   return(pred)
 }
 
-pred  <- map2_df(multinom.fit.cv, cv$test, get_pred, .id = "Fold")
-#pred2 <- map2_df(multinom.fit.cv2, cv$test, get_pred, .id = "Fold")
+pred <- map2_df(multinom.fit.cv, cv$test, get_pred, .id = "Fold");pred
+
+# Baseline
+Baseline <- rep(NA, length(pred$pred))
+
+for (idx in 1:folds) {
+  data <- pred[which(pred$Fold == idx),]$Experiment
+  guesses <- sample(data, length(which(pred$Fold == idx)))
+  Baseline[which(pred$Fold == idx)] <- guesses
+}
+pred$Baseline <- Baseline
+pred
 
 Acc  <- pred %>% group_by(Fold) %>%
-  summarise(Acc = round((sum(diag(table(Experiment, pred)))/sum(table(Experiment, pred)))*100,2))
-  # Acc2 = round((sum(diag(table(Experiment, pred2)))/sum(table(Experiment, pred2)))*100,2)
+  summarise(Acc = round((sum(diag(table(Experiment, pred)))/sum(table(Experiment, pred)))*100,2),
+            Baseline = round((sum(diag(table(Experiment, Baseline)))/sum(table(Experiment, Baseline)))*100,2))
+Acc
 
-# CM <- confusionMatrix(pred$pred, pred$Experiment, dnn = c("Prediction", "Reference"))
-
+# Confusionmatrix for Model
 truth_predicted <- data.frame(
   obs = pred$Experiment,
   pred = pred$pred)
@@ -433,6 +430,7 @@ cm <- conf_mat(truth_predicted, obs, pred)
 autoplot(cm, type = "heatmap") +
   scale_fill_gradient(low = "white", high = "orange")
 
+# Confidence interval for model
 CI <- quantile(pull(Acc, Acc), probs = c(0.025, 0.975));CI
 
 # Plot histogram with bell curve 
