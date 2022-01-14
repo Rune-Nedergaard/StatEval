@@ -151,6 +151,22 @@ paths$d <- as.factor(paths$d)
 paths$obstacleHeight <- as.factor(paths$obstacleHeight)
 
 
+par(mfrow=c(1,1))
+
+plot(paths$Experiment,paths$yShakinessMean, main= "yShakinessMean")
+plot(paths$Experiment,paths$yShakinessStd, main= "yShakinessStd")
+
+plot(paths$Experiment,paths$zMin, main= "Zmin")
+plot(paths$Experiment,paths$zStd, main= "zStd")
+
+plot(paths$Experiment,paths$pathDist, main= "pathDist")
+
+plot(paths$Experiment,paths$xyMax, main= "xyMax")
+plot(paths$Experiment,paths$yRange, main= "yRange")
+
+plot(paths$Experiment,paths$xzVertex, main= "xzVertex")
+plot(paths$Experiment,paths$zStd, main= "zStd")
+
 
 # =======================================================
 # Explore data
@@ -339,8 +355,7 @@ library(yardstick)
 library(MASS)
 
 folds <- 30
-
-cv <- crossv_kfold(paths, k = folds)
+cv <- crossv_kfold(paths, k = folds);cv
 
 
 ################## STEP AIC ###################
@@ -373,22 +388,10 @@ stepAIC(multinom.fit, direction = "both")
 #test$Experiment <- map(cv$test, ~relevel(test$Experiment, ref = 1))
 
 ###### Cross-Validation ##########
-
-# Vi kan nemt lave flere modeller ved blot: 
 multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
                                            + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
                                              yStd +xStd +zStd + zMin + pathDist, data = .))
 
-
-multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ Person + pathHeight + zVertex + 
-           xzVertex + yShakinessMean + xStd + zStd + zMin, data = .))
-
-
-
-
-
-#multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ pathDist+ xzVertex+ pathHeight+ zVertex+ 
-#                                             zMin+ yRange+ yStd + Repetition + Person, data = .))
 
 get_pred  <- function(model, test_data){
   data  <- as.data.frame(test_data)
@@ -396,15 +399,25 @@ get_pred  <- function(model, test_data){
   return(pred)
 }
 
-pred  <- map2_df(multinom.fit.cv, cv$test, get_pred, .id = "Fold")
-#pred2 <- map2_df(multinom.fit.cv2, cv$test, get_pred, .id = "Fold")
+pred <- map2_df(multinom.fit.cv, cv$test, get_pred, .id = "Fold");pred
+
+# Baseline
+Baseline <- rep(NA, length(pred$pred))
+
+for (idx in 1:folds) {
+  data <- pred[which(pred$Fold == idx),]$Experiment
+  guesses <- sample(data, length(which(pred$Fold == idx)))
+  Baseline[which(pred$Fold == idx)] <- guesses
+}
+pred$Baseline <- Baseline
+pred
 
 Acc  <- pred %>% group_by(Fold) %>%
-  summarise(Acc = round((sum(diag(table(Experiment, pred)))/sum(table(Experiment, pred)))*100,2))
-  # Acc2 = round((sum(diag(table(Experiment, pred2)))/sum(table(Experiment, pred2)))*100,2)
+  summarise(Acc = round((sum(diag(table(Experiment, pred)))/sum(table(Experiment, pred)))*100,2),
+            Baseline = round((sum(diag(table(Experiment, Baseline)))/sum(table(Experiment, Baseline)))*100,2))
+Acc
 
-# CM <- confusionMatrix(pred$pred, pred$Experiment, dnn = c("Prediction", "Reference"))
-
+# Confusionmatrix for Model
 truth_predicted <- data.frame(
   obs = pred$Experiment,
   pred = pred$pred)
@@ -417,11 +430,12 @@ cm <- conf_mat(truth_predicted, obs, pred)
 autoplot(cm, type = "heatmap") +
   scale_fill_gradient(low = "white", high = "orange")
 
-quantile(pull(Acc, Acc), probs = c(0.025, 0.975))
+# Confidence interval for model
+CI <- quantile(pull(Acc, Acc), probs = c(0.025, 0.975));CI
 
 # Plot histogram with bell curve 
-histWithNorm <- function(x, breaks = 10, main = "Histogram"){
-  h <- hist(x, breaks = breaks, main = main, col = 2)
+histWithNorm <- function(x, breaks = 10, main = "Generalisation Error"){
+  h <- hist(x, breaks = breaks, main = main, col = 0)
   xfit <- seq(min(x), max(x), length = 40) 
   yfit <- dnorm(xfit, mean = mean(x), sd = sd(x)) 
   yfit <- yfit * diff(h$mids[1:2]) * length(x) 
@@ -429,6 +443,7 @@ histWithNorm <- function(x, breaks = 10, main = "Histogram"){
 }
 
 histWithNorm(pull(Acc, Acc))
+abline(v = c(CI[1],CI[2]), col = 1, lwd =2)
 qqnorm(pull(Acc, Acc))
 qqline(pull(Acc, Acc))
 
@@ -436,63 +451,63 @@ qqline(pull(Acc, Acc))
 # Her antager vi at Generalisation error for modellerne er normafordelte.
 # Vi kan tjekke dette ved Histogram og qqplot, som gjort ovenfor.
 
+############ McNemar ###############  
+#We need a contingency table. Assumption: each cell has at least 25 observatinos
+# statistic = (Yes/No - No/Yes)^2 / (Yes/No + No/Yes)
 
-############# Train-set ############# 
+#It is not commenting on whether one model is more or less accurate or error prone than another. 
+#This is clear when we look at how the statistic is calculated.
+
+#It may be useful to report the difference in error between the two classifiers on the test set. 
+#In this case, be careful with your claims as the significant test does not report on the difference in error between the models, 
+#only the relative difference in the proportion of error between the models.
+
+
+
+############# Initial test combined vs. separate ############# 
+########## Combined ################
+multinom.fit <- multinom(formula = Experiment ~ pathDist + xzVertex + pathHeight + 
+                           zVertex + zMin + yStd + Person, data = train_data)
+
+
 
 # Predicting the values for train dataset
-train$precticed <- predict(multinom.fit, newdata = train, "class")
+test_data$precticed <- predict(multinom.fit, newdata = test_data, "class")
 
 # Building classification table
-ctable_train <- table(train$Experiment, train$precticed)
-
-# Calculating accuracy - sum of diagonal elements divided by total obs
-train_test_error <- round((sum(diag(ctable_train))/sum(ctable_train))*100,2);train_test_error
-
-############# Test-set ############# 
-
-# Predicting the values for train dataset
-test$precticed <- predict(multinom.fit, newdata = test, "class")
-
-# Building classification table
-ctable_test <- table(test$Experiment, test$precticed)
+ctable_test <- table(test_data$Experiment, test_data$precticed)
 
 # Calculating accuracy - sum of diagonal elements divided by total obs
 test_error <- round((sum(diag(ctable_test))/sum(ctable_test))*100,2);test_error
 
-print(c(train_test_error, test_error))
 
 
 ############ Predicting distance and height separately ############
 
 #Obstacle height
-multinom.fit <- multinom(formula = obstacleHeight ~ pathDist + xVertex + pathHeight + 
-                           zVertex + zMin + yStd + Person, data = train)
+multinom.fit <- multinom(formula = obstacleHeight ~ pathDist + xzVertex + pathHeight + 
+                           zVertex + zMin + yStd + Person, data = train_data)
 
 # Doing all the things for height
-train$precticed <- predict(multinom.fit, newdata = train, "class")
-ctable_train <- table(train$obstacleHeight, train$precticed)
-train_test_error <- round((sum(diag(ctable_train))/sum(ctable_train))*100,2);train_test_error
-test$precticed <- predict(multinom.fit, newdata = test, "class")
-ctable_test <- table(test$obstacleHeight, test$precticed)
+
+test_data$precticed <- predict(multinom.fit, newdata = test_data, "class")
+ctable_test <- table(test_data$obstacleHeight, test_data$precticed)
 test_error <- round((sum(diag(ctable_test))/sum(ctable_test))*100,2);test_error
 
 #Finding indices of correctly classified
-correct_obstacleHeight <- test$obstacleHeight == test$precticed
+correct_obstacleHeight <- test_data$obstacleHeight == test_data$precticed
 
 
 #Object distance
-multinom.fit <- multinom(formula = d ~ pathDist + xVertex + pathHeight + 
-                           zVertex + zMin + yStd + Person, data = train)
+multinom.fit <- multinom(formula = d ~ pathDist + xzVertex + pathHeight + 
+                           zVertex + zMin + yStd + Person, data = train_data)
 
 # Doing all the things for distance
-train$precticed <- predict(multinom.fit, newdata = train, "class")
-ctable_train <- table(train$d, train$precticed)
-train_test_error <- round((sum(diag(ctable_train))/sum(ctable_train))*100,2);train_test_error
-test$precticed <- predict(multinom.fit, newdata = test, "class")
-ctable_test <- table(test$d, test$precticed)
+test_data$precticed <- predict(multinom.fit, newdata = test_data, "class")
+ctable_test <- table(test_data$d, test_data$precticed)
 test_error <- round((sum(diag(ctable_test))/sum(ctable_test))*100,2);test_error
 
-correct_d<- test$d == test$precticed
+correct_d<- test_data$d == test_data$precticed
 
 #See where both are correct
 both_correct <- (correct_d == correct_obstacleHeight & correct_d == TRUE)
