@@ -76,16 +76,40 @@ nan_locations
 # What to replace NaN values with
 replace_with <- 0
 
-# Loop through matrices with NaN values 
+nan_locations
+
+
+# Loop through matrices with NaN values
 for(i in 1:length(nan_locations)){
+  # Get matrix of coordinates 
   arm_matrix <- armdata[[nan_locations[[i]][[1]]]][[nan_locations[[i]][[2]]]][[nan_locations[[i]][[3]]]]
-  nans <- which(is.na(arm_matrix > 0))
-  arm_matrix[nans]  <- replace_with
+  print(arm_matrix)
+  # Loop through points in matrix
+  for(j in nrow(arm_matrix):1){
+    x <- arm_matrix[j,1]
+    y <- arm_matrix[j,2]
+    z <- arm_matrix[j,3]
+
+    if(is.na(sum(arm_matrix[j,])) ){
+      arm_matrix[j,] <- c(x_repl,y_repl,z_repl)
+    }
+    
+    
+    
+    x_repl <- x
+    y_repl <- y
+    z_repl <- z
+    
+  }  
+
+  # Replace with new matrix 
   armdata[[nan_locations[[i]][[1]]]][[nan_locations[[i]][[2]]]][[nan_locations[[i]][[3]]]] <- arm_matrix
+  
 }
+
 
 # Save new data to file 
 saveRDS(armdata, file="armdata_cleaned.rds")
 
 # Load data from file
-armdata <- readRDS("armdata_cleaned.rds")
+# armdata <- readRDS("armdata_cleaned.rds")
