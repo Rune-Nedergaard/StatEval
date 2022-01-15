@@ -67,6 +67,19 @@ for (i in 1:n_experiments){
       # Define repetition
       repetition <- armdata[[i]][[j]][[k]]
       
+      
+      
+      for (m in 1:ncol(repetition)){
+        for (n in 1:nrow(repetition)){
+          if (is.na(repetition[n,m])){
+            repetition[n,m] <- repetition[n+1,m]
+          }
+          
+        }
+      }  
+      
+
+      
       # Define coordinates 
       x <- repetition[,1]
       y <- repetition[,2]
