@@ -192,7 +192,7 @@ val_labels <- val_data_matrix[,1]
 ############# Lasso regression  ##############
 
 library(glmnet)
-library(broom)
+require(methods)
 #x <- as.matrix(train_data[,4:]) # all X vars
 x <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
                   + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
@@ -201,151 +201,80 @@ y <- train_data$Experiment
 
 
 #using 10-fold cross validation on training data to pick hyper parameters (lambda value)
-fit.lasso.cv <- cv.glmnet(x, y,
+XYZ_fit <- cv.glmnet(x, y,
                           alpha = 1, family = "multinomial", type.measure = "class")
 
-mod <- glmnet::cv.glmnet(x, y,
-                         alpha = 1, family = "multinomial", type.measure = "class")
+plot(XYZ_fit)
 
-broom::tidy(coef(mod$glmnet.fit, s = mod$lambda.min, digits = 3))
-coef(fit.lasso.cv, s =0)
+#fitting without CV to  see what happens to coefficients
+fit <- glmnet(x, y, family = "multinomial", type.multinomial = "grouped")
+#When forcing it to either include or exclude a variable for all experiments, it selects: 
+#zVertex, xzVertex, yRange, xStd, pathHeight AND an intercept for Person9
 
+#plotting how coefficients change
+#fit2 <- glmnet(x, y, family = "multinomial")
+
+par(mfrow = c(4,4))
+plot(fit2, xvar = "lambda", label = TRUE, type.coef = "coef")
+par(mfrow = c(1,1))
+
+######## Predicting for XYZ ###########
+
+#formatting validation data so it plays well with glmnet
 newx <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
-+ xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
-  yStd +xStd +zStd + zMin + pathDist, data = val_data)
-
-
-regularizedpreds <- predict(fit.lasso.cv, newx = newx, s = "lambda.min", type = "class")
-
-
-
-fit.lasso.pred <- predict(fit.lasso.best, t)
-plot(fit.lasso.cv)
-
-coef(cvfit, cvfit$lambda.min)
-
-# extract optimal lambda
-lmabda_opt <- cvfit$lambda.min
-
-fitoptimal <- glmnet(x, y,lambda = lmabda_opt, family = "multinomial") 
-
-plot(fitoptimal)
-
-coef(fitoptimal)
-
-
-# Fit the LASSO model (Lasso: Alpha = 1)
-set.seed(100)
-#cv.lasso <- cv.glmnet(x, y, family='binomial', alpha=1, parallel=TRUE, standardize=TRUE, type.measure='auc')
-
-# Results
-coef(cv_output, s= "lambda.min")
-
-xnew <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
                      + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
-                       yStd +xStd +zStd + zMin + pathDist, data = test_data)
-
-predicted <- predict(cv_output, newx = xnew, s = "lambda.min", type = "class")
+                       yStd +xStd +zStd + zMin + pathDist, data = val_data)
 
 
-df_coef <- round(as.matrix(coef(cv_output, s=cv_output$lambda.min)), 2)
-df_coef[df_coef[, 1] != 0, ]
+#Predicting on validation data using optimal lambda
+xyz_predictions <- predict(XYZ_fit, newx = newx, s = "lambda.min", type = "class")
 
 
 
+actual_class <- as.integer(val_data$Experiment)
+predicted_xyz <- as.integer(xyz_predictions)
+tab_class <- table(actual_class, xyz_predictions)
+
+
+#Shows a lot of info
+confusionMatrix(table(predicted_xyz, actual_class), mode = "everything")
 
 
 
+######## Defining model with only YZ coordinates ###########
+#only including variables that do not contain info on x-axis
+x <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex
+                    +yShakinessMean +yShakinessStd +yzMax +yRange +
+                    yStd +zStd + zMin, data = train_data)
+
+#fitting
+YZ.fit <- cv.glmnet(x, y,
+                          alpha = 1, family = "multinomial", type.measure = "class")
 
 
+######## Predicting for YZ ###########
+#formatting validation data
+newx <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex
+                       +yShakinessMean +yShakinessStd +yzMax +yRange +
+                       yStd +zStd + zMin , data = val_data)
 
-############# old stuff ############
-
-folds <- 30
-cv <- crossv_kfold(paths, k = folds);cv
-
-
-
-get_pred  <- function(model, test_data){
-  data  <- as.data.frame(test_data)
-  pred  <- add_predictions(data, model)
-  return(pred)
-}
-
-######### xyz_full ##########
-cvxyz_full <- crossv_kfold(train_data, k = folds)
-xyz_full <- map(cvxyz_full$train, ~multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
-                                            + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
-                                              yStd +xStd +zStd + zMin + pathDist, data = train_data))
+#Predicting on validation data using optimal lambda
+yz_predictions <- predict(YZ.fit, newx = newx, s = "lambda.min", type = "class")
 
 
-pred <- map2_df(xyz_full, cvxyz_full$test, get_pred, .id = "Fold")
-xyz_full_predicted <- data.frame(
-  obs = pred$Experiment,
-  pred = pred$pred)
+actual_class <- as.integer(val_data$Experiment)
+predicted_yz <- as.integer(yz_predictions)
+tab_class <- table(actual_class, yz_predictions)
 
-xyz_full_predicted$obs <- as.factor(xyz_full_predicted$obs)
-xyz_full_predicted$pred <- as.factor(xyz_full_predicted$pred)
-mean(xyz_full_predicted$obs == xyz_full_predicted$pred) #60.56%
-
-####### XYZ_selected ########
+confusionMatrix(table(predicted_yz, actual_class), mode = "everything")
 
 
-#stepAIC on xyz_full
-xyz_full_nocv <- multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
-                          + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
-                            yStd +xStd +zStd + zMin + pathDist, data = paths)
+#Comparing XYZ and YZ
+correct_xyz <- predicted_xyz == actual_class
+correct_yz <- predicted_yz == actual_class
 
-
-
-#Selecting features
-stepAIC(xyz_full_nocv, direction = "both")
-#found Experiment ~ Person + pathHeight + zVertex + xzVertex + xyMin + yShakinessMean + yzMax + yStd+ zStd + zMin + pathDist
-
-#CV on xyz_selected
-cvxyz_selected <- crossv_kfold(paths, k = folds)
-xyz_selected <- map(cvxyz_selected$train, ~multinom(Experiment ~ Person + pathHeight + zVertex + 
-                                                      xzVertex + xyMin + yShakinessMean + yzMax + yStd + zStd + 
-                                                      zMin + pathDist, data = .))
-
-
-
-pred <- map2_df(xyz_selected, cvxyz_selected$test, get_pred, .id = "Fold")
-xyz_selected_predicted <- data.frame(
-  obs = pred$Experiment,
-  pred = pred$pred)
-
-xyz_selected_predicted$obs <- as.factor(xyz_selected_predicted$obs)
-xyz_selected_predicted$pred <- as.factor(xyz_selected_predicted$pred)
-mean(xyz_selected_predicted$obs == xyz_selected_predicted$pred) #62.19%
-
-
-
-
-
-
-
-xyz_selected <- multinom(formula = Experiment ~ Person + pathHeight + zVertex + 
-                           xzVertex + yShakinessMean + xStd + zStd + zMin, data = train_data)
-test_data$xyz_selected <- predict(xyz_selected, newdata = test_data, "class")
-mean(test_data$Experiment == test_data$xyz_selected) #61.75% acc
-
-ctable$xyz_selected <- test_data$Experiment == test_data$xyz_selected
-
-ctable(test_data$xyz_selected,test_data$xyz_full)
-
-
-#XY-coordinates only
-xy_full <- multinom(Experiment ~ Person + Repetition
-                    + xyMax + xyMin +yShakinessMean +yShakinessStd +yRange +
-                      yStd +xStd + zMin, data = train_data)
-
-test_data$xy_full <- predict(xy_full, newdata = test_data, "class")
-mean(test_data$Experiment == test_data$xy_full) #19.50% acc
-
-
-
-
-
-
-
+#two-ways of doing McNemar:
+#basic
+mcnemar.test(table(correct_xyz,correct_yz))
+#more info
+confusionMatrix(table(correct_xyz,correct_yz), mode = "everything")
