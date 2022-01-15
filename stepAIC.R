@@ -20,7 +20,7 @@ getDist3d <- function(v1, v2) {
 # =======================================================
 
 # Load cleaned data 
-armdata <- readRDS("armdata_cleaned.rds")
+armdata <- readRDS("armdata_cleaned_logres.rds")
 
 armdata[[1]][[1]]
 
@@ -66,6 +66,16 @@ for (i in 1:n_experiments){
     for (k in 1:length(armdata[[i]][[j]])){
       # Define repetition
       repetition <- armdata[[i]][[j]][[k]]
+      
+      for (m in 1:ncol(repetition)){
+        for (n in 1:nrow(repetition)){
+          if (is.na(repetition[n,m])){
+            repetition[n,m] <- repetition[n-1,m]
+          }
+        }
+      }  
+      
+      
       
       # Define coordinates 
       x <- repetition[,1]
@@ -196,7 +206,7 @@ xyz_full_predicted <- data.frame(
 
 xyz_full_predicted$obs <- as.factor(xyz_full_predicted$obs)
 xyz_full_predicted$pred <- as.factor(xyz_full_predicted$pred)
-mean(xyz_full_predicted$obs == xyz_full_predicted$pred) #58.88%
+mean(xyz_full_predicted$obs == xyz_full_predicted$pred) #74.80%
 
 ####### XYZ_selected ########
 
@@ -205,14 +215,70 @@ mean(xyz_full_predicted$obs == xyz_full_predicted$pred) #58.88%
 xyz_full_nocv <- multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
                           + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
                             yStd +xStd +zStd + zMin + pathDist, data = paths)
+
+
+library(glmnet)
+#x <- as.matrix(train_data[,4:]) # all X vars
+x <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
+                  + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
+                    yStd +xStd +zStd + zMin + pathDist, data = train_data)
+y <- train_data$Experiment
+
+
+ 
+  
+#cv_output <- cv.glmnet(x, y,
+#                       alpha = 1, 
+#                       nfolds = 5, family = "multinomial")
+
+fit.lasso.cv <- cv.glmnet(x, y,
+                  alpha = 1, family = "multinomial", type.measure = "class")
+
+#fit.lasso.best <- glmnet(x, y,
+#                            alpha = 1, family = "multinomial", lambda = fit.lasso.cv$lambda.min)
+
+
+fit.lasso.pred <- predict(fit.lasso.best, t)
+
+coef(cvfit, cvfit$lambda.min)
+
+# extract optimal lambda
+lmabda_opt <- cvfit$lambda.min
+
+fitoptimal <- glmnet(x, y,lambda = lmabda_opt, family = "multinomial") 
+
+plot(fitoptimal)
+
+coef(fitoptimal)
+
+
+# Fit the LASSO model (Lasso: Alpha = 1)
+set.seed(100)
+#cv.lasso <- cv.glmnet(x, y, family='binomial', alpha=1, parallel=TRUE, standardize=TRUE, type.measure='auc')
+
+# Results
+coef(cv_output, s= "lambda.min")
+
+xnew <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
+                          + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
+                            yStd +xStd +zStd + zMin + pathDist, data = test_data)
+
+predicted <- predict(cv_output, newx = xnew, s = "lambda.min", type = "class")
+
+
+df_coef <- round(as.matrix(coef(cv_output, s=cv_output$lambda.min)), 2)
+df_coef[df_coef[, 1] != 0, ]
+
 #Selecting features
 stepAIC(xyz_full_nocv, direction = "both")
-#found Experiment ~ Person + pathHeight + zVertex + xzVertex + yShakinessMean + xStd + zStd + zMin
+#found Experiment ~ Person + pathHeight + zVertex + xzVertex + xyMin + yShakinessMean + yzMax + yStd+ zStd + zMin + pathDist
 
 #CV on xyz_selected
 cvxyz_selected <- crossv_kfold(paths, k = folds)
-xyz_selected <- map(cvxyz_selected$train, ~multinom(Experiment ~ Person + pathHeight + zVertex + xzVertex +
-                                                      + yShakinessMean + xStd + zStd + zMin, data = .))
+xyz_selected <- map(cvxyz_selected$train, ~multinom(Experiment ~ Person + pathHeight + zVertex + 
+                                                      xzVertex + xyMin + yShakinessMean + yzMax + yStd + zStd + 
+                                                      zMin + pathDist, data = .))
+
 
 
 pred <- map2_df(xyz_selected, cvxyz_selected$test, get_pred, .id = "Fold")
