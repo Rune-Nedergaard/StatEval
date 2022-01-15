@@ -20,7 +20,7 @@ getDist3d <- function(v1, v2) {
 # =======================================================
 
 # Load cleaned data 
-armdata <- readRDS("armdata_cleaned_logres.rds")
+armdata <- readRDS("armdata_cleaned.rds")
 
 armdata[[1]][[1]]
 
@@ -66,15 +66,15 @@ for (i in 1:n_experiments){
     for (k in 1:length(armdata[[i]][[j]])){
       # Define repetition
       repetition <- armdata[[i]][[j]][[k]]
-      
+     ' 
       for (m in 1:ncol(repetition)){
         for (n in 1:nrow(repetition)){
           if (is.na(repetition[n,m])){
-            repetition[n,m] <- repetition[n-1,m]
+            repetition[n,m] <- sum(repetition[n+1,m]+repetition[n-1,m])/2
           }
         }
       }  
-      
+      '
       
       
       # Define coordinates 
@@ -173,51 +173,26 @@ library(ggplot2)
 library(yardstick)
 library(MASS)
 
-folds <- 30
-cv <- crossv_kfold(paths, k = folds);cv
-
-
-
-get_pred  <- function(model, test_data){
-  data  <- as.data.frame(test_data)
-  pred  <- add_predictions(data, model)
-  return(pred)
-}
 
 
 ################## STEP AIC ###################
 smp_size <- floor(0.75 * nrow(paths))
-set.seed(666)
+set.seed(42)
 train_idx <- sample(seq_len(nrow(paths)), size = smp_size)
 train_data <- paths[train_idx, ]
-test_data <- paths[-train_idx, ]
+val_data <- paths[-train_idx, ]
 
-######### xyz_full ##########
-cvxyz_full <- crossv_kfold(paths, k = folds)
-xyz_full <- map(cvxyz_full$train, ~multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
-                                          + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
-                                            yStd +xStd +zStd + zMin + pathDist, data = paths))
+val_data_matrix <- data.matrix(val_data)
+val_features <- val_data_matrix[,4:ncol(val_data_matrix)]
+val_labels <- val_data_matrix[,1]
 
 
-pred <- map2_df(xyz_full, cvxyz_full$test, get_pred, .id = "Fold")
-xyz_full_predicted <- data.frame(
-  obs = pred$Experiment,
-  pred = pred$pred)
-
-xyz_full_predicted$obs <- as.factor(xyz_full_predicted$obs)
-xyz_full_predicted$pred <- as.factor(xyz_full_predicted$pred)
-mean(xyz_full_predicted$obs == xyz_full_predicted$pred) #74.80%
-
-####### XYZ_selected ########
 
 
-#stepAIC on xyz_full
-xyz_full_nocv <- multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
-                          + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
-                            yStd +xStd +zStd + zMin + pathDist, data = paths)
-
+############# Lasso regression  ##############
 
 library(glmnet)
+library(broom)
 #x <- as.matrix(train_data[,4:]) # all X vars
 x <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
                   + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
@@ -225,20 +200,27 @@ x <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVerte
 y <- train_data$Experiment
 
 
- 
-  
-#cv_output <- cv.glmnet(x, y,
-#                       alpha = 1, 
-#                       nfolds = 5, family = "multinomial")
-
+#using 10-fold cross validation on training data to pick hyper parameters (lambda value)
 fit.lasso.cv <- cv.glmnet(x, y,
-                  alpha = 1, family = "multinomial", type.measure = "class")
+                          alpha = 1, family = "multinomial", type.measure = "class")
 
-#fit.lasso.best <- glmnet(x, y,
-#                            alpha = 1, family = "multinomial", lambda = fit.lasso.cv$lambda.min)
+mod <- glmnet::cv.glmnet(x, y,
+                         alpha = 1, family = "multinomial", type.measure = "class")
+
+broom::tidy(coef(mod$glmnet.fit, s = mod$lambda.min, digits = 3))
+coef(fit.lasso.cv, s =0)
+
+newx <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
++ xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
+  yStd +xStd +zStd + zMin + pathDist, data = val_data)
+
+
+regularizedpreds <- predict(fit.lasso.cv, newx = newx, s = "lambda.min", type = "class")
+
 
 
 fit.lasso.pred <- predict(fit.lasso.best, t)
+plot(fit.lasso.cv)
 
 coef(cvfit, cvfit$lambda.min)
 
@@ -260,14 +242,61 @@ set.seed(100)
 coef(cv_output, s= "lambda.min")
 
 xnew <- model.matrix(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
-                          + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
-                            yStd +xStd +zStd + zMin + pathDist, data = test_data)
+                     + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
+                       yStd +xStd +zStd + zMin + pathDist, data = test_data)
 
 predicted <- predict(cv_output, newx = xnew, s = "lambda.min", type = "class")
 
 
 df_coef <- round(as.matrix(coef(cv_output, s=cv_output$lambda.min)), 2)
 df_coef[df_coef[, 1] != 0, ]
+
+
+
+
+
+
+
+
+
+############# old stuff ############
+
+folds <- 30
+cv <- crossv_kfold(paths, k = folds);cv
+
+
+
+get_pred  <- function(model, test_data){
+  data  <- as.data.frame(test_data)
+  pred  <- add_predictions(data, model)
+  return(pred)
+}
+
+######### xyz_full ##########
+cvxyz_full <- crossv_kfold(train_data, k = folds)
+xyz_full <- map(cvxyz_full$train, ~multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
+                                            + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
+                                              yStd +xStd +zStd + zMin + pathDist, data = train_data))
+
+
+pred <- map2_df(xyz_full, cvxyz_full$test, get_pred, .id = "Fold")
+xyz_full_predicted <- data.frame(
+  obs = pred$Experiment,
+  pred = pred$pred)
+
+xyz_full_predicted$obs <- as.factor(xyz_full_predicted$obs)
+xyz_full_predicted$pred <- as.factor(xyz_full_predicted$pred)
+mean(xyz_full_predicted$obs == xyz_full_predicted$pred) #60.56%
+
+####### XYZ_selected ########
+
+
+#stepAIC on xyz_full
+xyz_full_nocv <- multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
+                          + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
+                            yStd +xStd +zStd + zMin + pathDist, data = paths)
+
+
 
 #Selecting features
 stepAIC(xyz_full_nocv, direction = "both")
@@ -308,10 +337,15 @@ ctable(test_data$xyz_selected,test_data$xyz_full)
 
 #XY-coordinates only
 xy_full <- multinom(Experiment ~ Person + Repetition
-                       + xyMax + xyMin +yShakinessMean +yShakinessStd +yRange +
-                         yStd +xStd + zMin, data = train_data)
+                    + xyMax + xyMin +yShakinessMean +yShakinessStd +yRange +
+                      yStd +xStd + zMin, data = train_data)
 
 test_data$xy_full <- predict(xy_full, newdata = test_data, "class")
 mean(test_data$Experiment == test_data$xy_full) #19.50% acc
+
+
+
+
+
 
 
