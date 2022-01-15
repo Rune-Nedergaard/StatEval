@@ -83,33 +83,38 @@ nan_locations
 for(i in 1:length(nan_locations)){
   # Get matrix of coordinates 
   arm_matrix <- armdata[[nan_locations[[i]][[1]]]][[nan_locations[[i]][[2]]]][[nan_locations[[i]][[3]]]]
-  print(arm_matrix)
+  # print(arm_matrix)
   # Loop through points in matrix
+  x_repl <- NA
+  y_repl <- NA
+  z_repl <- NA
+  
   for(j in nrow(arm_matrix):1){
-    x <- arm_matrix[j,1]
-    y <- arm_matrix[j,2]
-    z <- arm_matrix[j,3]
-
+    
     if(is.na(sum(arm_matrix[j,])) ){
-      arm_matrix[j,] <- c(x_repl,y_repl,z_repl)
+      arm_matrix[j,1] <- x_repl
+      arm_matrix[j,2] <- y_repl
+      arm_matrix[j,3] <- z_repl
+      
     }
     
     
+    x_repl <- arm_matrix[j,1]
+    y_repl <- arm_matrix[j,2]
+    z_repl <- arm_matrix[j,3]
     
-    x_repl <- x
-    y_repl <- y
-    z_repl <- z
-    
-  }  
+  } 
 
+  # print(arm_matrix)
   # Replace with new matrix 
   armdata[[nan_locations[[i]][[1]]]][[nan_locations[[i]][[2]]]][[nan_locations[[i]][[3]]]] <- arm_matrix
   
 }
 
 
+
 # Save new data to file 
 saveRDS(armdata, file="armdata_cleaned.rds")
 
 # Load data from file
-# armdata <- readRDS("armdata_cleaned.rds")
+armdata_new <- readRDS("armdata_cleaned.rds")
