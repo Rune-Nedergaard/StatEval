@@ -1,19 +1,4 @@
-# =======================================================
-#  Define functions
-# =======================================================
-
-# Create jpg file path for plots by providing a plot name
-getJpgFilePath <- function(plot_name) {
-  plots_path <- "plots"
-  file_type <- "jpg"
-  path <- paste(paste(plots_path, plot_name, sep="/"), file_type, sep=".")
-  
-}
-
-getDist3d <- function(v1, v2) {
-  dist <- sqrt((v2[1] - v1[1])^2 + (v2[2]- v1[2])^2 + (v2[3]- v1[3])^2)
-  return(dist)
-}
+source("functions.R")
 
 # =======================================================
 # Load/prepare data
@@ -446,14 +431,6 @@ autoplot(cm, type = "heatmap") +
 # Confidence interval for model
 CI <- quantile(pull(Acc, Acc), probs = c(0.025, 0.975));CI
 
-# Plot histogram with bell curve 
-histWithNorm <- function(x, breaks = 10, main = "Generalisation Error"){
-  h <- hist(x, breaks = breaks, main = main, col = 0)
-  xfit <- seq(min(x), max(x), length = 40) 
-  yfit <- dnorm(xfit, mean = mean(x), sd = sd(x)) 
-  yfit <- yfit * diff(h$mids[1:2]) * length(x) 
-  lines(xfit, yfit, col = "black", lwd = 2)
-}
 
 histWithNorm(pull(Acc, Acc))
 abline(v = c(CI[1],CI[2]), col = 1, lwd =2)
