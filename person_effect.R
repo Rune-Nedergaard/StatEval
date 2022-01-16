@@ -1,122 +1,18 @@
+# =======================================================
+# Libraries
+# =======================================================
+
 library("ggplot2")
 library("ggpubr")
 library(car)
 library(xtable)
+
 source("functions.R")
 
 # =======================================================
-# Load/prepare data
+# Load data
 # =======================================================
-
-# Load cleaned data 
-armdata <- readRDS("armdata_cleaned.rds")
-
-# Define experiment setups 
-exp_setups <- data.frame(exp1 = c(15.0, 20),
-                         exp2 = c(15.0, 27.5),
-                         exp3 = c(15.0, 35),
-                         exp4 = c(22.5, 20),
-                         exp5 = c(22.5, 27.5),
-                         exp6 = c(22.5, 35),
-                         exp7 = c(30.0, 20),
-                         exp8 = c(30.0, 27.5),
-                         exp9 = c(30.0, 35),
-                         exp10 = c(37.5, 20),
-                         exp11 = c(47.5, 27.5),
-                         exp12 = c(37.5, 35),
-                         exp13 = c(45.0, 20),
-                         exp14 = c(45.0, 27.5),
-                         exp15 = c(45.0, 35),
-                         exp16 = c(0,0)
-)
-# Set experiment setup names
-row.names(exp_setups) <- c("d","obstacle_height")
-
-# number of experiments (first layer )
-n_experiments <- length(armdata);n_experiments
-
-# number of persons (second layer)
-n_participants <- length(armdata[[1]]
-);n_participants
-
-# number of repetitions (third layer)
-n_repetitions <- length(armdata[[1]][[1]]);n_repetitions
-
-# Matrix of path stats 
-paths <- c() 
-
-# Loop through experiments
-for (i in 1:n_experiments){
-  # Loop through participants
-  for (j in 1:length(armdata[[i]])){
-    # Loop through repetitions 
-    for (k in 1:length(armdata[[i]][[j]])){
-      # Define repetition
-      repetition <- armdata[[i]][[j]][[k]]
-      
-      # Define coordinates 
-      x <- repetition[,1]
-      y <- repetition[,2]
-      z <- repetition[,3]
-      
-      # Get x-value of highest point on path (vertex of path)
-      x_vertex <- repetition[which.max(z), 1]
-      # Get z-value of highest point on path (vertex of path)
-      z_vertex <- repetition[which.max(z), 3]
-      # Calculate y-value range
-      y_range <- abs(max(y) - min(y))
-      # y standard deviation
-      y_std <- sd(y)
-      
-      z_min <- min(repetition[,3])
-      
-      # Calculate path height (diference between max and min height)
-      path_height <- max(z) - min(z)
-      # Define distance between object and 
-      d <- exp_setups[[i]][[1]]
-      # Define obstacle height
-      obstacle_height <- exp_setups[[i]][[2]]
-      
-      
-      
-      
-      curve_dist <- 0
-      prev_point <- NA
-      # Loop through all points and sum distance between points
-      for (n in 1:nrow(repetition)){
-        if (!is.na(sum(prev_point))){
-          curve_dist <- curve_dist + getDist3d(repetition[n,], prev_point)    
-        }
-        
-        prev_point <- repetition[n,]
-      }
-      
-      
-      paths <- rbind(paths, c(i, d, obstacle_height, j, k, path_height, z_vertex, x_vertex, y_range, y_std, z_min, curve_dist))
-      
-    }
-  }
-}
-
-# Crate dataframe from matrix
-paths <- data.frame(paths)
-
-# Add column names
-colnames(paths) <- c("Experiment", "d" , "obstacleHeight", "Person", "Repetition", "pathHeight", "zVertex", "xVertex", "yRange", "yStd", "zMin", "pathDist")
-head(paths)
-
-# Define variables as factors
-paths$Experiment <- as.factor(paths$Experiment)
-paths$Person <- as.factor(paths$Person)
-paths$Repetition <- as.factor(paths$Repetition)
-
-
-
-# Remove outlier. Repetition with dropped cylinder 
-idx_remove <- with(paths, which(Experiment == 5 & Person == 2 & Repetition == 7))
-paths <- paths[-idx_remove,]
-
-
+paths <- readRDS("paths.rds")
 
 # Define log transform 
 logPathDist <- log(paths$pathDist)
