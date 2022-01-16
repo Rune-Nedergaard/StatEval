@@ -11,10 +11,18 @@ getJpgFilePath <- function(plot_name) {
   
 }
 
+# Get euclidean distance in 3d
 getDist3d <- function(v1, v2) {
   dist <- sqrt((v2[1] - v1[1])^2 + (v2[2]- v1[2])^2 + (v2[3]- v1[3])^2)
   return(dist)
 }
+
+# Get euclidean distance in 2d
+getDist2d <- function(v1, v2) {
+  dist <- sqrt((v2[1] - v1[1])^2 + (v2[2]- v1[2])^2)
+  return(dist)
+}
+
 
 # Plot histogram with bell curve 
 histWithNorm <- function(x, breaks = 40, main = "Histogram with normal fit"){
