@@ -217,6 +217,13 @@ for (i in 1:n_experiments){
       xy_curve_dist <- 0
       yz_curve_dist <- 0
       xz_curve_dist <- 0
+      
+      origo_dist <- 0
+      xy_origo_dist <- 0
+      yz_origo_dist <- 0
+      xz_origo_dist <- 0
+      
+      
       prev_point <- NA
       # Loop through all points and sum distance between points
       for (n in 1:nrow(repetition)){
@@ -225,6 +232,12 @@ for (i in 1:n_experiments){
         
         if (!is.na(sum(prev_point))){
           curve_dist <- curve_dist + getDist3d(repetition[n,], prev_point)    
+          origo_dist <- origo_dist + getDist3d(repetition[n,], c(0,0,0))    
+          xy_origo_dist <- xy_origo_dist +  getDist2d(repetition[n,c(1,2)], c(0,0))
+          yz_origo_dist <- yz_origo_dist +  getDist2d(repetition[n,c(1,2)], c(0,0))
+          xz_origo_dist <- xz_origo_dist +  getDist2d(repetition[n,c(1,2)], c(0,0))
+          
+          
           xy_curve_dist <- xy_curve_dist + getDist2d(repetition[n,c(1,2)], xy_prev_point)
           yz_curve_dist <- yz_curve_dist + getDist2d(repetition[n,c(2,3)], yz_prev_point)
           xz_curve_dist <- xz_curve_dist + getDist2d(repetition[n,c(1,3)], xz_prev_point)
@@ -238,7 +251,7 @@ for (i in 1:n_experiments){
         
       }
       
-      paths <- rbind(paths, c(i, d, obstacle_height, j, k, path_height, z_vertex, xz_vertex, xy_max, xy_min, y_shakiness_mean, y_shakiness_std, yz_max, y_range, y_std, x_std, z_std, z_min, curve_dist, xy_curve_dist, yz_curve_dist, xz_curve_dist))
+      paths <- rbind(paths, c(i, d, obstacle_height, j, k, path_height, z_vertex, xz_vertex, xy_max, xy_min, y_shakiness_mean, y_shakiness_std, yz_max, y_range, y_std, x_std, z_std, z_min, curve_dist, xy_curve_dist, yz_curve_dist, xz_curve_dist, origo_dist, xy_origo_dist, yz_origo_dist, xz_origo_dist))
       
     }
   }
@@ -248,7 +261,7 @@ for (i in 1:n_experiments){
 paths <- data.frame(paths)
 
 # Add column names
-colnames(paths) <- c("Experiment", "d" , "obstacleHeight", "Person", "Repetition", "pathHeight", "zVertex", "xzVertex","xyMax","xyMin","yShakinessMean","yShakinessStd","yzMax", "yRange", "yStd","xStd","zStd", "zMin", "pathDist", "xyPathDist", "yzPathDist", "xzPathDist")
+colnames(paths) <- c("Experiment", "d" , "obstacleHeight", "Person", "Repetition", "pathHeight", "zVertex", "xzVertex","xyMax","xyMin","yShakinessMean","yShakinessStd","yzMax", "yRange", "yStd","xStd","zStd", "zMin", "pathDist", "xyPathDist", "yzPathDist", "xzPathDist", "origoDist", "xyOrigoDist", "yzOrigoDist", "xzOrigoDist")
 head(paths)
 
 # Define variables as factors
@@ -264,3 +277,4 @@ paths <- paths[-idx_remove,]
 
 # Save dataframe to file 
 saveRDS(paths, file="paths.rds")
+
