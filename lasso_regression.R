@@ -8,7 +8,7 @@ library(dplyr)
 library(ggplot2)
 library(yardstick)
 library(MASS)
-
+library(caret)
 
 library(glmnet)
 require(methods)
@@ -87,7 +87,6 @@ xyz_predictions <- predict(XYZ_fit, newx = newx, s = "lambda.min", type = "class
 actual_class <- as.integer(val_data$Experiment)
 predicted_xyz <- as.integer(xyz_predictions)
 tab_class <- table(actual_class, xyz_predictions)
-
 
 #Shows a lot of info
 confusionMatrix(table(predicted_xyz, actual_class), mode = "everything")
