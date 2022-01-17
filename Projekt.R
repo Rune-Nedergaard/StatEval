@@ -50,7 +50,7 @@ plot(paths$Experiment,paths$zStd, main= "zStd")
 
 folds <- 30
 cv <- crossv_kfold(paths, k = folds);cv
-
+?crossv_kfold
 
 ################## STEP AIC ###################
 #These are needed when not doing cv - when we do stepAIC
@@ -217,16 +217,16 @@ baseline_pvals <- data.frame(
 );baseline_pvals
 
 library(xtable)
-xtable(as.data.frame(p.adjust(p_vals[1,])))
-xtable(as.data.frame(p.adjust(baseline_pvals[1,])))
+xtable(as.data.frame(p.adjust(p_vals[1,], method = "BH")))
+xtable(as.data.frame(p.adjust(baseline_pvals[1,], method = "BH")))
 
 Acc %>% ungroup()
 Acc <- as.data.frame(Acc);Acc$Fold <- as.numeric(Acc$Fold)
 Acc <- Acc[order(Acc$Fold),]
 xtable(Acc)
 
-boxplot(Acc[,2:ncol(Acc)])
-
+boxplot(Acc[,2:ncol(Acc)],  xlab = "Accuracies Across Folds")
+?boxplot
 
 
 
