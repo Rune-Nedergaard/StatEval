@@ -172,6 +172,24 @@ paths %>%
         legend.text = element_text(size=18))
 dev.off()
 
+
+# ---------------------
+# Boxplot
+# ---------------------
+# Interaction plot is made
+jpeg(file= getJpgFilePath("interaction_experiment_person_pathDist"), width = 1080, height = 720)
+# interaction.plot(paths$Experiment, paths$Person, paths$pathDist, xlab="Experiment", ylab="Path distance", col=1:10, lwd=2)
+ggline(paths, x = "Experiment", y = "pathDist", color = "Person",
+       add = c("mean_se"), size=1)
+dev.off()
+
+# Interaction plot is made
+jpeg(file= getJpgFilePath("interaction_experiment_person_origoDist"), width = 1080, height = 720)
+# interaction.plot(paths$Experiment, paths$Person, paths$pathDist, xlab="Experiment", ylab="Path distance", col=1:10, lwd=2)
+ggline(paths, x = "Experiment", y = "origoDist", color = "Person",
+       add = c("mean_se"), size=1)
+dev.off()
+
  
 # # Boxplot: pathsHeigh ~ ObstacleHeight
 # jpeg(file= getJpgFilePath("boxplot_pathHeight_obstacleHeight"))
