@@ -85,22 +85,22 @@ stepAIC(multinom.fit, direction = "both")
 # Model with Spatial Coordinates XYZ
 multinom.fit.cv <- map(cv$train, ~multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
                                            + xyMax + xyMin +yShakinessMean +yShakinessStd +yzMax +yRange +
-                                             yStd +xStd +zStd + zMin + pathDist, data = .))
+                                             yStd +xStd +zStd + zMin + pathDist + origoDist, data = .))
 
 # Model with Spatial Coordinates XY
 multinom.fit.cv.xy <- map(cv$train, ~multinom(Experiment ~ Person + Repetition
                                            + xyMax + xyMin +yShakinessMean +yShakinessStd +yRange +
-                                             yStd +xStd + xyPathDist, data = .))
+                                             yStd +xStd + xyPathDist + xyOrigoDist, data = .))
 
 # Model with Spatial Coordinates XZ
 multinom.fit.cv.xz <- map(cv$train, ~multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex +xzVertex
-                                            + xStd +zStd + zMin + xzPathDist, data = .))
+                                            + xStd +zStd + zMin + xzPathDist + xzOrigoDist, data = .))
 
 
 # Model with Spatial Coordinates YZ
 multinom.fit.cv.yz <- map(cv$train, ~multinom(Experiment ~ Person + Repetition +pathHeight+ zVertex
                                           + yShakinessMean + yShakinessStd + yzMax +yRange +
-                                             yStd +zStd + zMin + yzPathDist, data = .))
+                                             yStd +zStd + zMin + yzPathDist + yzOrigoDist, data = .))
 
 get_pred  <- function(model, test_data){
   data  <- as.data.frame(test_data)
@@ -115,7 +115,7 @@ pred$XZModelPred <- map2_df(multinom.fit.cv.xz, cv$test, get_pred,.id = "Fold")$
 pred$YZModelPred <- map2_df(multinom.fit.cv.yz, cv$test, get_pred,.id = "Fold")$pred
 
 # Baseline
-Baseline <- rep(NA, length(XYZModelPred))
+Baseline <- rep(NA, length(pred$XYZModelPred))
 
 # Maybe Baseline should be Majority Voting instead of random
 for (idx in 1:folds) {
@@ -136,26 +136,38 @@ Acc
 
 
 # Confusionmatrix for Model
-truth_predicted <- data.frame(
-  obs = pred$Experiment,
-  pred = pred$pred)
+xyz_truth_predicted <- data.frame(
+  obs =  as.factor(pred$Experiment),
+  pred =  as.factor(pred$XYZModelPred))
 
-truth_predicted$obs <- as.factor(truth_predicted$obs)
-truth_predicted$pred <- as.factor(truth_predicted$pred)
+xy_truth_predicted <- data.frame(
+  obs =  as.factor(pred$Experiment),
+  pred =  as.factor(pred$XYModelPred))
 
+xz_truth_predicted <- data.frame(
+  obs =  as.factor(pred$Experiment),
+  pred =  as.factor(pred$XZModelPred))
 
-cm <- conf_mat(truth_predicted, obs, pred)
+yz_truth_predicted <- data.frame(
+  obs =  as.factor(pred$Experiment),
+  pred =  as.factor(pred$YZModelPred))
 
-autoplot(cm, type = "heatmap") +
+cm_xyz <- conf_mat(xyz_truth_predicted, obs, pred)
+cm_xy <- conf_mat(xy_truth_predicted, obs, pred)
+cm_xz <- conf_mat(xz_truth_predicted, obs, pred)
+cm_yz <- conf_mat(yz_truth_predicted, obs, pred)
+
+autoplot(cm_xyz, type = "heatmap") +
   scale_fill_gradient(low = "white", high = "orange")
 
-# Confidence interval for model
-CI <- quantile(pull(Acc, Acc_XYZ_Model), probs = c(0.025, 0.975));CI
+autoplot(cm_xy, type = "heatmap") +
+  scale_fill_gradient(low = "white", high = "orange")
 
-histWithNorm(pull(Acc, Acc_XYZ_Model))
-abline(v = c(CI[1],CI[2]), col = 1, lwd =2)
-qqnorm(pull(Acc, Acc_XYZ_Model))
-qqline(pull(Acc, Acc_XYZ_Model))
+autoplot(cm_xz, type = "heatmap") +
+  scale_fill_gradient(low = "white", high = "orange")
+
+autoplot(cm_yz, type = "heatmap") +
+  scale_fill_gradient(low = "white", high = "orange")
 
 # Ved flere modeller kan vi sammenligne med en t-test eller McNemar
 # Her antager vi at Generalisation error for modellerne er normafordelte.
@@ -172,7 +184,11 @@ baseline <-     pred$Baseline == actual_class
 
 #two-ways of doing McNemar:
 # Against Baseline
-Baseline_pvalue <- mcnemar.test(table(baseline,correct_xy))$p.value
+baseline_XYZ_pvalue <- mcnemar.test(table(baseline,correct_xyz))$p.value
+baseline_XY_pvalue <- mcnemar.test(table(baseline,correct_xy))$p.value
+baseline_XZ_pvalue <- mcnemar.test(table(baseline,correct_xz))$p.value
+baseline_YZ_pvalue <- mcnemar.test(table(baseline,correct_yz))$p.value
+
 
 # Against each other
 XYZ_XY_pvalue <- mcnemar.test(table(correct_xyz,correct_xy))$p.value
@@ -185,7 +201,6 @@ XY_YZ_pvalue <- mcnemar.test(table(correct_xz,correct_yz))$p.value
 YZ_XZ_pvalue <- mcnemar.test(table(correct_yz,correct_xz))$p.value
 
 p_vals <- data.frame(
-  Baseline_pvalue = Baseline_pvalue,
   XYZ_XY_pvalue = XYZ_XY_pvalue,
   XYZ_XZ_pvalue = XYZ_XZ_pvalue,
   XYZ_YZ_pvalue = XYZ_YZ_pvalue,
@@ -194,7 +209,26 @@ p_vals <- data.frame(
   YZ_XZ_pvalue = YZ_XZ_pvalue
 );p_vals
 
-adjusted_pvalues <- p.adjust(p_vals[1,]);adjusted_pvalues
+baseline_pvals <- data.frame(
+  baseline_XYZ_pvalue = baseline_XYZ_pvalue,
+  baseline_XY_pvalue = baseline_XY_pvalue,
+  baseline_XZ_pvalue = baseline_XZ_pvalue,
+  baseline_YZ_pvalue = baseline_YZ_pvalue
+);baseline_pvals
+
+library(xtable)
+xtable(as.data.frame(p.adjust(p_vals[1,])))
+xtable(as.data.frame(p.adjust(baseline_pvals[1,])))
+
+Acc %>% ungroup()
+Acc <- as.data.frame(Acc);Acc$Fold <- as.numeric(Acc$Fold)
+Acc <- Acc[order(Acc$Fold),]
+xtable(Acc)
+
+boxplot(Acc[,2:ncol(Acc)])
+
+
+
 
 ############ McNemar NOTES ###############  
 #We need a contingency table. Assumption: each cell has at least 25 observatinos
