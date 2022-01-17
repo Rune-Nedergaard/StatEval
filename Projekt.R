@@ -194,12 +194,7 @@ p_vals <- data.frame(
   YZ_XZ_pvalue = YZ_XZ_pvalue
 );p_vals
 
-cont_table <- table(correct_xyz, correct_xz);cont_table
-
-library(exact2x2)
-XYZ_XZ_pvalue
-mcnemar.exact(cont_table)$p.value
-
+adjusted_pvalues <- p.adjust(p_vals[1,]);adjusted_pvalues
 
 ############ McNemar NOTES ###############  
 #We need a contingency table. Assumption: each cell has at least 25 observatinos
